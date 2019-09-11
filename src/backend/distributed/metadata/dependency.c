@@ -393,6 +393,7 @@ SupportedDependencyByCitus(const ObjectAddress *address)
 	 */
 	switch (getObjectClass(address))
 	{
+		case OCLASS_COLLATION:
 		case OCLASS_SCHEMA:
 		{
 			return true;

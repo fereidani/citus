@@ -160,6 +160,11 @@ GetDependencyCreateDDLCommands(const ObjectAddress *dependency)
 			break;
 		}
 
+		case OCLASS_COLLATION:
+		{
+			return CreateCollationDDLsIdempotent(dependency->objectId);
+		}
+
 		case OCLASS_PROC:
 		{
 			return CreateFunctionDDLCommandsIdempotent(dependency);

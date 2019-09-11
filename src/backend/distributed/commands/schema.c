@@ -121,6 +121,11 @@ PlanAlterObjectSchemaStmt(AlterObjectSchemaStmt *stmt, const char *queryString)
 			return PlanAlterTypeSchemaStmt(stmt, queryString);
 		}
 
+		case OBJECT_COLLATION:
+		{
+			return PlanAlterCollationSchemaStmt(stmt, queryString);
+		}
+
 		case OBJECT_PROCEDURE:
 		case OBJECT_AGGREGATE:
 		case OBJECT_FUNCTION:
@@ -199,6 +204,12 @@ ProcessAlterObjectSchemaStmt(AlterObjectSchemaStmt *stmt, const char *queryStrin
 		case OBJECT_TYPE:
 		{
 			ProcessAlterTypeSchemaStmt(stmt, queryString);
+			return;
+		}
+
+		case OBJECT_COLLATION:
+		{
+			ProcessAlterCollationSchemaStmt(stmt, queryString);
 			return;
 		}
 

@@ -9,7 +9,9 @@
 
 #include "postgres.h"
 
+#include "access/htup_details.h"
 #include "catalog/dependency.h"
+#include "catalog/pg_collation.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "fmgr.h"
@@ -19,6 +21,7 @@
 #include "tcop/dest.h"
 #include "tcop/utility.h"
 #include "utils/builtins.h"
+#include "utils/syscache.h"
 #include "utils/lsyscache.h"
 #include "utils/regproc.h"
 
@@ -138,6 +141,11 @@ CreateStmtByObjectAddress(const ObjectAddress *address)
 {
 	switch (getObjectClass(address))
 	{
+		case OCLASS_COLLATION:
+		{
+			return CreateCollationDDL(address->objectId);
+		}
+
 		case OCLASS_PROC:
 		{
 			return GetFunctionDDLCommand(address->objectId, false);
@@ -167,6 +175,11 @@ GenerateBackupNameForCollision(const ObjectAddress *address)
 {
 	switch (getObjectClass(address))
 	{
+		case OCLASS_COLLATION:
+		{
+			return GenerateBackupNameForCollationCollision(address);
+		}
+
 		case OCLASS_PROC:
 		{
 			return GenerateBackupNameForProcCollision(address);
@@ -184,6 +197,44 @@ GenerateBackupNameForCollision(const ObjectAddress *address)
 								"unable to generate a backup name for the old type")));
 		}
 	}
+}
+
+
+/*
+ * CreateRenameTypeStmt creates a rename statement for a type based on its ObjectAddress.
+ * The rename statement will rename the existing object on its address to the value
+ * provided in newName.
+ */
+static RenameStmt *
+CreateRenameCollationStmt(const ObjectAddress *address, char *newName)
+{
+	RenameStmt *stmt = makeNode(RenameStmt);
+	Oid collid = address->objectId;
+	HeapTuple colltup = NULL;
+	Form_pg_collation collationForm;
+	char *schemaName = NULL;
+	char *collationName = NULL;
+	List *name = NIL;
+
+	colltup = SearchSysCache1(COLLOID, collid);
+
+	if (!HeapTupleIsValid(colltup))
+	{
+		elog(ERROR, "citus cache lookup error");
+		return NULL;
+	}
+	collationForm = (Form_pg_collation) GETSTRUCT(colltup);
+
+	schemaName = get_namespace_name(collationForm->collnamespace);
+	collationName = NameStr(collationForm->collname);
+	name = list_make2(makeString(schemaName), makeString(collationName));
+	ReleaseSysCache(colltup);
+
+	stmt->renameType = OBJECT_COLLATION;
+	stmt->object = (Node *) name;
+	stmt->newname = newName;
+
+	return stmt;
 }
 
 
@@ -257,6 +308,11 @@ CreateRenameStatement(const ObjectAddress *address, char *newName)
 {
 	switch (getObjectClass(address))
 	{
+		case OCLASS_COLLATION:
+		{
+			return CreateRenameCollationStmt(address, newName);
+		}
+
 		case OCLASS_PROC:
 		{
 			return CreateRenameProcStmt(address, newName);
