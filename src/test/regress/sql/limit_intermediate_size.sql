@@ -60,13 +60,13 @@ UNION
 
 
 -- if we fetch the same amount of data at once, it should fail
-WITH cte AS (SELECT * FROM users_table WHERE user_id IN (1,2,3,4,5))
+WITH cte AS (SELECT * FROM users_table WHERE user_id IN (1,2,3,4,5) OFFSET 0)
 SELECT * FROM cte ORDER BY 1,2,3,4,5 LIMIT 10;
 
 
 SET citus.max_intermediate_result_size TO 0;
 -- this should fail
-WITH cte AS (SELECT * FROM users_table WHERE user_id=1),
+WITH cte AS (SELECT * FROM users_table WHERE user_id=1 OFFSET 0),
 cte2 AS (SELECT * FROM users_table WHERE user_id=2),
 cte3 AS (SELECT * FROM users_table WHERE user_id=3),
 cte4 AS (SELECT * FROM users_table WHERE user_id=4),
