@@ -148,6 +148,7 @@ distributed_planner(Query *parse, int cursorOptions, ParamListInfo boundParams)
 		 * distributed query.
 		 */
 		AssignRTEIdentities(rangeTableList);
+		InlineCTEsInQueryTree(parse);
 		originalQuery = copyObject(parse);
 
 		setPartitionedTablesInherited = false;
@@ -694,11 +695,6 @@ CreateDistributedPlan(uint64 planId, Query *originalQuery, Query *query, ParamLi
 	 */
 	originalQuery = (Query *) ResolveExternalParams((Node *) originalQuery,
 													boundParams);
-
-	/*
-	 * TODO: add comment
-	 */
-	InlineCTEsInQueryTree(originalQuery);
 
 	/*
 	 * Plan subqueries and CTEs that cannot be pushed down by recursively
