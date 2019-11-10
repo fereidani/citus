@@ -247,7 +247,7 @@ $cmd$, 'task_assignment_test_table_2');
 
 INSERT INTO explain_outputs
 SELECT parse_explain_output($cmd$
-EXPLAIN WITH q1 AS (SELECT * FROM task_assignment_test_table_2) SELECT * FROM q1
+EXPLAIN WITH q1 AS (SELECT *, random() FROM task_assignment_test_table_2) SELECT * FROM q1
 $cmd$, 'task_assignment_test_table_2');
 
 -- The count should be 2 since the intermediate results are processed on
