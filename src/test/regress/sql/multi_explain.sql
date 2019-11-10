@@ -561,10 +561,10 @@ INSERT INTO lineitem_hash_part
 -- explain with recursive planning
 EXPLAIN (COSTS OFF, VERBOSE true)
 WITH keys AS (
-  SELECT DISTINCT l_orderkey FROM lineitem_hash_part
+  SELECT DISTINCT l_orderkey FROM lineitem_hash_part OFFSET 0
 ),
 series AS (
-  SELECT s FROM generate_series(1,10) s
+  SELECT s FROM generate_series(1,10) s OFFSET 0
 )
 SELECT l_orderkey FROM series JOIN keys ON (s = l_orderkey)
 ORDER BY s;
