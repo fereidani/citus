@@ -93,7 +93,7 @@ PostgreSQLCTEInlineCondition(CommonTableExpr *cte, CmdType cmdType)
 		(cte->ctematerialized == CTEMaterializeNever ||
 		 cte->ctematerialized == CTEMaterializeDefault))
 #else
-		 true)
+		true)
 #endif
 	{
 		return true;
