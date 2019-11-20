@@ -1416,7 +1416,7 @@ MasterExtendedOpNode(MultiExtendedOp *originalOpNode,
 			column->varoattno = walkerContext->columnId;
 			walkerContext->columnId++;
 
-			if (column->vartype == RECORDOID)
+			if (column->vartype == RECORDOID || column->vartype == RECORDARRAYOID)
 			{
 				column->vartypmod = BlessRecordExpression(originalTargetEntry->expr);
 			}

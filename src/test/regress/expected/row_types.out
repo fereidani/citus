@@ -54,6 +54,15 @@ SELECT (x,y) FROM test GROUP BY x, y ORDER BY x, y;
  (2,3)
 (4 rows)
 
+SELECT ARRAY[(x,(y,x)),(y,(x,y))] FROM test ORDER BY x, y;
+               array               
+-----------------------------------
+ {"(1,\"(2,1)\")","(2,\"(1,2)\")"}
+ {"(1,\"(3,1)\")","(3,\"(1,3)\")"}
+ {"(2,\"(2,2)\")","(2,\"(2,2)\")"}
+ {"(2,\"(3,2)\")","(3,\"(2,3)\")"}
+(4 rows)
+
 select distinct (x,y) AS foo, x, y FROM test ORDER BY x, y;
   foo  | x | y 
 -------+---+---
@@ -94,6 +103,13 @@ SELECT (x,y) AS foo FROM test WHERE x = 1 ORDER BY x, y;
 -------
  (1,2)
  (1,3)
+(2 rows)
+
+SELECT ARRAY[(x,(y,x)),(y,(x,y))] FROM test WHERE x = 1 ORDER BY x, y;
+               array               
+-----------------------------------
+ {"(1,\"(2,1)\")","(2,\"(1,2)\")"}
+ {"(1,\"(3,1)\")","(3,\"(1,3)\")"}
 (2 rows)
 
 select distinct (x,y) AS foo, x, y FROM test WHERE x = 1 ORDER BY x, y;

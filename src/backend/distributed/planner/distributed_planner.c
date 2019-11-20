@@ -1173,7 +1173,7 @@ FinalizeRouterPlan(PlannedStmt *localPlan, CustomScan *customScan)
 		/* build target entry pointing to remote scan range table entry */
 		newVar = makeVarFromTargetEntry(customScanRangeTableIndex, targetEntry);
 
-		if (newVar->vartype == RECORDOID)
+		if (newVar->vartype == RECORDOID || newVar->vartype == RECORDARRAYOID)
 		{
 			/*
 			 * Add the anonymous composite type to the type cache and store
@@ -1268,7 +1268,7 @@ BlessRecordExpression(Expr *expr)
 			Oid rowArgTypeId = exprType(rowArg);
 			int rowArgTypeMod = exprTypmod(rowArg);
 
-			if (rowArgTypeId == RECORDOID)
+			if (rowArgTypeId == RECORDOID || rowArgTypeId == RECORDARRAYOID)
 			{
 				/* ensure nested rows are blessed as well */
 				rowArgTypeMod = BlessRecordExpression((Expr *) rowArg);
@@ -1285,6 +1285,21 @@ BlessRecordExpression(Expr *expr)
 		BlessTupleDesc(rowTupleDesc);
 
 		typeMod = rowTupleDesc->tdtypmod;
+	}
+	else if (IsA(expr, ArrayExpr))
+	{
+		/*
+		 * Handle row array expressions, e.g. SELECT ARRAY[(1,2)];
+		 */
+		ArrayExpr *arrayExpr = (ArrayExpr *) expr;
+		ListCell *elemCell = NULL;
+
+		foreach(elemCell, arrayExpr->elements)
+		{
+			Node *elemArg = (Node *) lfirst(elemCell);
+			typeMod = BlessRecordExpression((Expr *) elemArg);
+			break;
+		}
 	}
 
 	return typeMod;
