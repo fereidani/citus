@@ -5,6 +5,14 @@ SET search_path TO row_types;
 CREATE TABLE test (x int, y int);
 SELECT create_distributed_table('test','x');
 
+CREATE OR REPLACE FUNCTION identity_returner(x anyelement) RETURNS anyelement
+AS $$
+BEGIN
+   RETURN x;
+END;
+$$ language plpgsql;
+SELECT create_distributed_function('identity_returner(anyelement)');
+
 CREATE OR REPLACE FUNCTION table_returner(INT) RETURNS TABLE(name text, id INT)
 AS $$
 BEGIN
@@ -29,7 +37,10 @@ INSERT INTO test VALUES (1,2), (1,3), (2,2), (2,3);
 -- multi-shard queries support row types
 SELECT (x,y) FROM test ORDER BY x, y;
 SELECT (x,y) FROM test GROUP BY x, y ORDER BY x, y;
+SELECT identity_returner((x,y)) FROM test GROUP BY x, y ORDER BY x, y;
+SELECT NULLIF((x,y), (y,x)) FROM test GROUP BY x, y ORDER BY x, y;
 SELECT ARRAY[(x,(y,x)),(y,(x,y))] FROM test ORDER BY x, y;
+SELECT ARRAY[ARRAY[(x,(y,x))],ARRAY[(y,(x,y))]] FROM test ORDER BY x, y;
 select distinct (x,y) AS foo, x, y FROM test ORDER BY x, y;
 SELECT table_returner(x) FROM test ORDER BY x, y;
 SELECT record_returner(x) FROM test ORDER BY x, y;
@@ -37,7 +48,9 @@ SELECT record_returner(x) FROM test ORDER BY x, y;
 -- router queries support row types
 SELECT (x,y) FROM test WHERE x = 1 ORDER BY x, y;
 SELECT (x,y) AS foo FROM test WHERE x = 1 ORDER BY x, y;
+SELECT NULLIF((x,y), (y,x)) FROM test WHERE x = 1 GROUP BY x, y ORDER BY x, y;
 SELECT ARRAY[(x,(y,x)),(y,(x,y))] FROM test WHERE x = 1 ORDER BY x, y;
+SELECT ARRAY[ARRAY[(x,(y,x))],ARRAY[(y,(x,y))]] FROM test WHERE x = 1 ORDER BY x, y;
 select distinct (x,y) AS foo, x, y FROM test WHERE x = 1 ORDER BY x, y;
 SELECT table_returner(x) FROM test WHERE x = 1 ORDER BY x, y;
 SELECT record_returner(x) FROM test WHERE x = 1 ORDER BY x, y;

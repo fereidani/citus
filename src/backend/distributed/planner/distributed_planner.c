@@ -15,6 +15,7 @@
 
 #include "access/htup_details.h"
 #include "catalog/pg_class.h"
+#include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "distributed/citus_nodefuncs.h"
 #include "distributed/citus_nodes.h"
@@ -1228,7 +1229,9 @@ BlessRecordExpression(Expr *expr)
 {
 	int32 typeMod = -1;
 
-	if (IsA(expr, FuncExpr))
+	elog(WARNING, "BLESS %s", nodeToString(expr));
+
+	if (IsA(expr, FuncExpr) || IsA(expr, OpExpr))
 	{
 		/*
 		 * Handle functions that return records on the target
@@ -1241,9 +1244,81 @@ BlessRecordExpression(Expr *expr)
 		/* get_expr_result_type blesses the tuple descriptor */
 		typeClass = get_expr_result_type((Node *) expr, &resultTypeId,
 										 &resultTupleDesc);
+
+		elog(WARNING, "#### %d", typeClass);
 		if (typeClass == TYPEFUNC_COMPOSITE)
 		{
 			typeMod = resultTupleDesc->tdtypmod;
+		}
+		else if (typeClass == TYPEFUNC_RECORD)
+		{
+			List *args = NIL;
+			bool tryResolveAny = false;
+			Oid funcOid = InvalidOid;
+
+			if (IsA(expr, FuncExpr))
+			{
+				FuncExpr *funcExpr = (FuncExpr *) expr;
+
+				elog(WARNING, "func result: %d", funcExpr->funcresulttype);
+				tryResolveAny = funcExpr->funcresulttype == RECORDOID ||
+								IsPolymorphicType(funcExpr->funcresulttype);
+				args = funcExpr->args;
+				funcOid = funcExpr->funcid;
+			}
+			else if (IsA(expr, OpExpr) || IsA(expr, NullIfExpr))
+			{
+				OpExpr *opExpr = (OpExpr *) expr;
+
+				elog(WARNING, "op result: %d", opExpr->opresulttype);
+				tryResolveAny = opExpr->opresulttype == RECORDOID || IsPolymorphicType(
+					opExpr->opresulttype);
+				args = opExpr->args;
+				funcOid = opExpr->opfuncid;
+			}
+
+			elog(WARNING, "tyResolve? %d", tryResolveAny);
+			if (tryResolveAny)
+			{
+				ListCell *argCell = NULL;
+				Oid *argtypes = NULL;
+				char **argnames = NULL;
+				char *argmodes = NULL;
+				HeapTuple proctup;
+				int argIndex = 0;
+
+				proctup = SearchSysCache1(PROCOID, funcOid);
+
+				get_func_arg_info(proctup, &argtypes, &argnames, &argmodes);
+
+				foreach(argCell, args)
+				{
+					elog(WARNING, "ARGSCAN %d", argIndex);
+					while (argmodes != NULL &&
+						   (argmodes[argIndex] == PROARGMODE_IN ||
+							argmodes[argIndex] == PROARGMODE_INOUT ||
+							argmodes[argIndex] == PROARGMODE_VARIADIC))
+					{
+						argIndex++;
+					}
+
+					if (IsPolymorphicType(argtypes[argIndex]))
+					{
+						Node *arg = (Node *) lfirst(argCell);
+						Oid argTypeId = exprType(arg);
+
+						if (argTypeId == RECORDOID || argTypeId == RECORDARRAYOID)
+						{
+							typeMod = BlessRecordExpression((Expr *) arg);
+							goto exitargloop;
+						}
+					}
+					argIndex++;
+				}
+
+exitargloop:
+				ReleaseSysCache(proctup);
+			}
 		}
 	}
 	else if (IsA(expr, RowExpr))
@@ -1300,6 +1375,12 @@ BlessRecordExpression(Expr *expr)
 			typeMod = BlessRecordExpression((Expr *) elemArg);
 			break;
 		}
+	}
+	else if (IsA(expr, NullIfExpr))
+	{
+		NullIfExpr *nullIfExpr = (NullIfExpr *) expr;
+
+		typeMod = BlessRecordExpression((Expr *) linitial(nullIfExpr->args));
 	}
 
 	return typeMod;
