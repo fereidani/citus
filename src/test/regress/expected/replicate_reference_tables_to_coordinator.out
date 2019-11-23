@@ -150,6 +150,36 @@ SELECT test_reference_local_join_func();
  (20,20)
 (1 row)
 
+-- test plpgsql function
+CREATE FUNCTION test_reference_local_join_plpgsql_func()
+RETURNS void AS $$
+BEGIN
+	INSERT INTO local_table VALUES (21);
+	INSERT INTO numbers VALUES (4);
+	PERFORM local_table.a, numbers.a FROM local_table NATURAL JOIN numbers ORDER BY 1;
+	RAISE EXCEPTION '';
+	PERFORM local_table.a, numbers.a FROM local_table NATURAL JOIN numbers ORDER BY 1;
+END;
+$$ LANGUAGE plpgsql;
+SELECT test_reference_local_join_plpgsql_func();
+LOG:  executing the command locally: INSERT INTO replicate_ref_to_coordinator.numbers_8000001 (a) VALUES (4)
+CONTEXT:  SQL statement "INSERT INTO numbers VALUES (4)"
+PL/pgSQL function test_reference_local_join_plpgsql_func() line 4 at SQL statement
+ERROR:  
+CONTEXT:  PL/pgSQL function test_reference_local_join_plpgsql_func() line 6 at RAISE
+SELECT sum(a) FROM local_table;
+ sum 
+-----
+  33
+(1 row)
+
+SELECT sum(a) FROM numbers;
+LOG:  executing the command locally: SELECT sum(a) AS sum FROM replicate_ref_to_coordinator.numbers_8000001 numbers
+ sum 
+-----
+  41
+(1 row)
+
 -- error if call in a DO block
 DO $$
 BEGIN

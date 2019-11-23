@@ -73,6 +73,21 @@ SELECT local_table.a, numbers.a FROM local_table NATURAL JOIN numbers ORDER BY 1
 $$ LANGUAGE sql;
 SELECT test_reference_local_join_func();
 
+-- test plpgsql function
+CREATE FUNCTION test_reference_local_join_plpgsql_func()
+RETURNS void AS $$
+BEGIN
+	INSERT INTO local_table VALUES (21);
+	INSERT INTO numbers VALUES (4);
+	PERFORM local_table.a, numbers.a FROM local_table NATURAL JOIN numbers ORDER BY 1;
+	RAISE EXCEPTION '';
+	PERFORM local_table.a, numbers.a FROM local_table NATURAL JOIN numbers ORDER BY 1;
+END;
+$$ LANGUAGE plpgsql;
+SELECT test_reference_local_join_plpgsql_func();
+SELECT sum(a) FROM local_table;
+SELECT sum(a) FROM numbers;
+
 -- error if call in a DO block
 DO $$
 BEGIN
